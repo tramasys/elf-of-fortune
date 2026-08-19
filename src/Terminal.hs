@@ -26,25 +26,40 @@ showStaticWheel instruction ansi = renderWheel (instructionIndex instruction) an
 
 renderWheel :: Int -> Bool -> Bool -> IO ()
 renderWheel center ansi rewind = do
-  if rewind then putStr "\ESC[4A\ESC[J" else pure ()
-  putStrLn "             ELF OF FORTUNE"
-  putStrLn "                   │"
+  if rewind then putStr $ "\ESC[" ++ show wheelHeight ++ "A\ESC[J" else pure ()
+  putStrLn $ centeredText "ELF OF FORTUNE"
+  putStrLn ""
+  putStrLn $ replicate wheelCenter ' ' ++ "│"
+  putStrLn ""
   putStrLn $ wheelLine center ansi
-  putStrLn "                   🐈"
+  putStrLn ""
+  putStrLn $ replicate (wheelCenter - 1) ' ' ++ "🐈"
   hFlush stdout
 
 wheelLine :: Int -> Bool -> String
 wheelLine center ansi =
-  "      "
-    ++ wheelName (center - 2)
-    ++ "   "
-    ++ wheelName (center - 1)
-    ++ "  "
-    ++ highlightedName center ansi
-    ++ "  "
-    ++ wheelName (center + 1)
-    ++ "   "
-    ++ wheelName (center + 2)
+  let left = wheelName (center - 2) ++ "   " ++ wheelName (center - 1) ++ "  "
+      selected = highlightedName center ansi
+      selectedWidth = length (wheelName center) + 4
+      indentation = max 0 $ wheelCenter - length left - selectedWidth `div` 2
+   in replicate indentation ' '
+        ++ left
+        ++ selected
+        ++ "  "
+        ++ wheelName (center + 1)
+        ++ "   "
+        ++ wheelName (center + 2)
+
+centeredText :: String -> String
+centeredText text = replicate indentation ' ' ++ text
+  where
+    indentation = max 0 $ wheelCenter - length text `div` 2
+
+wheelCenter :: Int
+wheelCenter = 25
+
+wheelHeight :: Int
+wheelHeight = 7
 
 wheelName :: Int -> String
 wheelName index = crashName $ allInstructions !! wheelIndex index
@@ -68,7 +83,7 @@ showSummary :: PatchPlan -> FilePath -> FilePath -> Bool -> IO ()
 showSummary plan input destination dryRun = do
   let instruction = patchInstruction plan
   putStrLn ""
-  putStrLn "The cat has made its decision."
+  putStrLn $ centeredText "The cat has made its decision!"
   putStrLn ""
   putStrLn $ "Victim:       " ++ input
   putStrLn $ "Instruction:  " ++ crashName instruction
