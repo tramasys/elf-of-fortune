@@ -1,0 +1,56 @@
+cabal-version: 3.0
+name: elf-of-fortune
+version: 0.1.0.0
+synopsis: Let fortune choose how an ELF executable dies
+description: A terminal roulette wheel that redirects an x86-64 ELF entry point to a fatal instruction.
+category: System
+license: NONE
+build-type: Simple
+extra-source-files:
+    README.md
+    tests/fixture.c
+    tests/test.sh
+
+common warnings
+    default-language: Haskell2010
+    ghc-options:
+        -Wall
+        -Wextra
+
+executable elf-of-fortune
+    import: warnings
+    main-is: Main.hs
+    hs-source-dirs: src
+    other-modules:
+        Elf
+        Roulette
+        Terminal
+    build-depends:
+        base >=4.14 && <5,
+        bytestring,
+        directory,
+        filepath,
+        unix
+    ghc-options: -O2
+
+executable fixtures
+    import: warnings
+    main-is: Fixtures.hs
+    hs-source-dirs: tools
+    build-depends:
+        base >=4.14 && <5,
+        directory,
+        filepath,
+        process
+
+test-suite integration
+    import: warnings
+    type: exitcode-stdio-1.0
+    main-is: Integration.hs
+    hs-source-dirs: tests
+    build-depends:
+        base >=4.14 && <5,
+        directory,
+        filepath,
+        process
+    build-tool-depends: elf-of-fortune:elf-of-fortune

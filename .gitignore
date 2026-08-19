@@ -1,11 +1,4 @@
-.deps/
-.serena/
-.trigger-tree/
-bin/
-build/
-libexec/
-share/
-docs/
+dist-newstyle/
 tests/*.doomed
 tests/*.dead
 tests/*.bak

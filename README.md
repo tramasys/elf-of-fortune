@@ -1,9 +1,3 @@
-<div align="center">
-<pre>
-             ELF OF FORTUNE
-                   │
-      UD1   LOCK NOP  [ UD2 ]  INT3   HLT
-                   🐈
-</pre>
-<p>good luck stranger</p>
-</div>
+<p align="center"><samp>ELF OF FORTUNE<br>│<br>UD1&nbsp;&nbsp;&nbsp;LOCK NOP&nbsp;&nbsp;[ UD2 ]&nbsp;&nbsp;INT3&nbsp;&nbsp;&nbsp;HLT&nbsp;&nbsp;&nbsp;&nbsp;<br>🐈</samp></p>
+
+<p align="center">good luck stranger</p>
