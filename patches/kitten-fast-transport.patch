@@ -1,0 +1,40 @@
+diff --git a/lib/Kitten/Interpret.hs b/lib/Kitten/Interpret.hs
+index 1f777cd..118fa68 100644
+--- a/lib/Kitten/Interpret.hs
++++ b/lib/Kitten/Interpret.hs
+@@ -130,6 +130,20 @@ instance Pretty Rep where
+     Name n -> Pretty.hcat ["\\", pPrint n]
+     Text t -> Pretty.doubleQuotes $ Pretty.text $ Text.unpack t
+-
++
++decodeHexBytes :: Vector Rep -> Maybe (Vector Rep)
++decodeHexBytes encoded
++  | odd (Vector.length encoded) = Nothing
++  | otherwise = Vector.generateM (Vector.length encoded `div` 2) $ \ i -> do
++    high <- hexNibble $ encoded ! (i * 2)
++    low <- hexNibble $ encoded ! (i * 2 + 1)
++    return $ Int32 $ high * 16 + low
++  where
++    hexNibble (Character c)
++      | c >= '0' && c <= '9' = Just $ fromIntegral $ fromEnum c - fromEnum '0'
++      | c >= 'a' && c <= 'f' = Just $ fromIntegral $ fromEnum c - fromEnum 'a' + 10
++      | c >= 'A' && c <= 'F' = Just $ fromIntegral $ fromEnum c - fromEnum 'A' + 10
++    hexNibble _ = Nothing
++
+ -- | Interprets a program dictionary.
+-
++
+ interpret
+@@ -631,6 +645,11 @@ interpret dictionary mName mainArgs stdin' stdout' _stderr' initialStack = do
+       "get_line" -> do
+         line <- hGetLine stdin'
+         modifyIORef' stackRef (Array (Vector.fromList (map Character line)) :::)
++      "decode_hex_bytes" -> do
++        Array encoded ::: r <- readIORef stackRef
++        case decodeHexBytes encoded of
++          Just bytes -> writeIORef stackRef $ Array bytes ::: r
++          Nothing -> throwIO $ Failure "invalid hexadecimal byte transport"
+       "flush_stdout" -> hFlush stdout'
+-
++
+       "read_file" -> do

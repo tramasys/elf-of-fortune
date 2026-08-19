@@ -1,0 +1,181 @@
+// Binary byte access. The native host transports ASCII hex, and a tiny Kitten
+// runtime intrinsic decodes it into byte values before the ELF parser sees it.
+
+vocab kitten {
+  intrinsic decode_hex_bytes (List<Char> -> List<Int32>)
+}
+
+define decode_hex_bytes (List<Char> -> List<Int32>):
+  _::kitten::decode_hex_bytes
+
+define fatal<R..., S...> (R..., List<Char> -> S... +IO +Exit):
+  "@@ELF_OF_FORTUNE_ERROR@@" print
+  "error: " print
+  say
+  1 exit
+
+define require_some<R..., T> (R..., Optional<T>, List<Char> -> R..., T +IO +Exit):
+  -> message;
+  match
+  case some {}
+  case none:
+    message fatal
+
+define quotient_i32 (Int32, Int32 -> Int32):
+  do (with (+Fail)): _::kitten::div_int32
+
+define remainder_i32 (Int32, Int32 -> Int32):
+  do (with (+Fail)): _::kitten::mod_int32
+
+define at<T> (List<T>, Int32 -> T +IO +Exit):
+  -> xs, i;
+  xs i get "internal index out of bounds" require_some
+
+define hex_digit (Int32 -> Char +IO +Exit):
+  -> n;
+  if (n = 0): '0'
+  elif (n = 1): '1'
+  elif (n = 2): '2'
+  elif (n = 3): '3'
+  elif (n = 4): '4'
+  elif (n = 5): '5'
+  elif (n = 6): '6'
+  elif (n = 7): '7'
+  elif (n = 8): '8'
+  elif (n = 9): '9'
+  elif (n = 10): 'a'
+  elif (n = 11): 'b'
+  elif (n = 12): 'c'
+  elif (n = 13): 'd'
+  elif (n = 14): 'e'
+  elif (n = 15): 'f'
+  else: "internal invalid hexadecimal digit" fatal
+
+define byte_count (List<Int32> -> Int32):
+  length
+
+define read_byte (List<Int32>, Int32 -> Int32 +IO +Exit):
+  -> data, offset;
+  if (offset < 0):
+    "malformed ELF: negative file offset" fatal
+  else:
+    data offset at
+
+define read_u16_le (List<Int32>, Int32 -> Int32 +IO +Exit):
+  -> data, offset;
+  data offset read_byte -> low;
+  data (offset + 1) read_byte -> high;
+  low + high * 256
+
+// Produces the Int32 bit pattern.  It is suitable for masks such as flags.
+define read_u32_bits_le (List<Int32>, Int32 -> Int32 +IO +Exit):
+  -> data, offset;
+  data offset read_byte -> b0;
+  data (offset + 1) read_byte -> b1;
+  data (offset + 2) read_byte -> b2;
+  data (offset + 3) read_byte -> b3;
+  b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+
+// File offsets and sizes must fit Kitten's Int32 list-index API.
+define read_u32_index_le (List<Int32>, Int32 -> Int32 +IO +Exit):
+  -> data, offset;
+  data (offset + 3) read_byte -> high;
+  if (high >= 128):
+    "malformed ELF: file offset or size exceeds supported range" fatal
+  else:
+    data offset read_u32_bits_le
+
+define int32_to_u64 (Int32 -> UInt64 +IO +Exit):
+  -> value;
+  if (value < 0):
+    "internal negative value cannot become UInt64" fatal
+  else:
+    value show read "internal Int32 to UInt64 conversion failed" require_some
+
+define u64_to_int32 (UInt64 -> Int32 +IO +Exit):
+  show read "malformed ELF: integer exceeds supported file-index range" require_some
+
+define read_u64_le (List<Int32>, Int32 -> UInt64 +IO +Exit):
+  -> data, offset;
+  data offset read_byte int32_to_u64 -> b0;
+  data (offset + 1) read_byte int32_to_u64 -> b1;
+  data (offset + 2) read_byte int32_to_u64 -> b2;
+  data (offset + 3) read_byte int32_to_u64 -> b3;
+  data (offset + 4) read_byte int32_to_u64 -> b4;
+  data (offset + 5) read_byte int32_to_u64 -> b5;
+  data (offset + 6) read_byte int32_to_u64 -> b6;
+  data (offset + 7) read_byte int32_to_u64 -> b7;
+  b0 | (b1 << 8) | (b2 << 16) | (b3 << 24)
+    | (b4 << 32) | (b5 << 40) | (b6 << 48) | (b7 << 56)
+
+define read_u64_index_le (List<Int32>, Int32 -> Int32 +IO +Exit):
+  -> data, offset;
+  if (data (offset + 4) read_byte <> 0):
+    "malformed ELF: file offset or size exceeds supported range" fatal
+  elif (data (offset + 5) read_byte <> 0):
+    "malformed ELF: file offset or size exceeds supported range" fatal
+  elif (data (offset + 6) read_byte <> 0):
+    "malformed ELF: file offset or size exceeds supported range" fatal
+  elif (data (offset + 7) read_byte <> 0):
+    "malformed ELF: file offset or size exceeds supported range" fatal
+  else:
+    data offset read_u32_index_le
+
+define payload_hex (List<Int32> -> List<Char> +IO +Exit):
+  -> bytes;
+  match (bytes head_tail)
+  case none: ""
+  case some:
+    unpair -> first, rest;
+    do (with (+Fail)):
+      [(first / 16) hex_digit, (first % 16) hex_digit] -> here;
+      if (rest empty):
+        here
+      else:
+        here " " cat rest payload_hex cat
+
+define transport_hex (List<Int32> -> List<Char> +IO +Exit):
+  -> bytes;
+  match (bytes head_tail)
+  case none: ""
+  case some:
+    unpair -> first, rest;
+    do (with (+Fail)):
+      [(first / 16) hex_digit, (first % 16) hex_digit]
+      rest transport_hex cat
+
+define u64_le_transport_hex (UInt64 -> List<Char> +IO +Exit):
+  0 u64_le_transport_hex::loop
+
+vocab u64_le_transport_hex {
+  define loop (UInt64, Int32 -> List<Char> +IO +Exit):
+    -> value, index;
+    if (index = 8):
+      ""
+    else:
+      (value & 255u64) u64_to_int32 -> octet;
+      [octet 16 quotient_i32 hex_digit, octet 16 remainder_i32 hex_digit]
+      (value >> 8) (index + 1) loop cat
+}
+
+define hex_i32 (Int32, Int32 -> List<Char> +IO +Exit):
+  -> value, digits;
+  if (value < 0):
+    "internal cannot format negative hexadecimal value" fatal
+  elif (digits <= 0):
+    ""
+  else:
+    do (with (+Fail)):
+      (value / 16) (digits - 1) hex_i32 -> prefix;
+      (value % 16) hex_digit -> digit;
+      prefix digit append
+
+define hex_u64 (UInt64, Int32 -> List<Char> +IO +Exit):
+  -> value, digits;
+  if (digits <= 0):
+    ""
+  else:
+    do (with (+Fail)):
+      (value / 16u64) (digits - 1) hex_u64 -> prefix;
+      (value % 16u64) u64_to_int32 hex_digit -> digit;
+      prefix digit append

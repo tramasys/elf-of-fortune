@@ -1,0 +1,13 @@
+.deps/
+.serena/
+.trigger-tree/
+bin/
+build/
+libexec/
+share/
+docs/
+tests/*.doomed
+tests/*.dead
+tests/*.bak
+core
+core.*
