@@ -9,48 +9,45 @@ build-type: Simple
 extra-source-files:
     README.md
     tests/fixture.c
-    tests/test.sh
 
 common warnings
     default-language: Haskell2010
     ghc-options:
         -Wall
         -Wextra
+        -Wcompat
+        -Wincomplete-record-updates
+        -Wincomplete-uni-patterns
+        -Wredundant-constraints
 
 executable elf-of-fortune
     import: warnings
     main-is: Main.hs
     hs-source-dirs: src
     other-modules:
+        Cli
         Elf
         Roulette
         Terminal
     build-depends:
         base >=4.14 && <5,
-        bytestring,
-        directory,
-        filepath,
-        unix
+        bytestring >=0.10 && <0.13,
+        directory >=1.3 && <1.4,
+        filepath >=1.4 && <1.6,
+        unix >=2.7 && <2.9
     ghc-options: -O2
 
 executable fixtures
     import: warnings
     main-is: Fixtures.hs
     hs-source-dirs: tools
+    other-modules: Project
     build-depends:
         base >=4.14 && <5,
-        directory,
-        filepath,
-        process
+        directory >=1.3 && <1.4,
+        filepath >=1.4 && <1.6,
+        process >=1.6 && <1.7
 
-test-suite integration
-    import: warnings
-    type: exitcode-stdio-1.0
-    main-is: Integration.hs
-    hs-source-dirs: tests
-    build-depends:
-        base >=4.14 && <5,
-        directory,
-        filepath,
-        process
-    build-tool-depends: elf-of-fortune:elf-of-fortune
+source-repository head
+    type: git
+    location: https://github.com/tramasys/elf-of-fortune.git
